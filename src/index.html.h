@@ -1,0 +1,146 @@
+const char INDEX_HTML[] PROGMEM = R"=====(
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>LEDStrip Controller</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- Latest compiled and minified CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Latest compiled JavaScript -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/js/bootstrap.bundle.min.js"></script> 
+
+        <script>
+
+            var power_state_map = [false, true];
+            var pulse_mode_state_map = ["continuous", "dashes", "dots"];
+            var colour_mode_state_map = ["single", "spread", "normal", "tight", "other"];
+
+            function fetchStatus(){
+                var xhttp = new XMLHttpRequest();
+                function handler(){
+                    var success = this.readyState == XMLHttpRequest.DONE && this.status == 200;
+                    if(!success){
+                        // Bad response
+                        console.log("Bad response from ESP8266");
+                    }
+                    var status = this.responseText;
+
+                    // Test only \/\/\/
+                    var status =  '1,1,0,#FF0000';
+                    // Test only ^^^
+
+                    var state = status.split(",");
+                    var power_state = power_state_map[parseInt(state[0])];
+                    var pulse_mode_state = pulse_mode_state_map[parseInt(state[1])];
+                    var colour_mode_state = colour_mode_state_map[parseInt(state[2])];
+                    var colour_state = state[3];
+
+                    document.forms["power_form"]["power_switch"].checked = power_state;
+                    document.forms["pulse_mode_form"][pulse_mode_state].checked = true;
+                    document.forms["colour_mode_form"][colour_mode_state].checked = true;
+                    document.forms["colour_form"]["colour_picker"].value = colour_state; 
+                }
+
+                xhttp.onload = handler;
+                xhttp.open("GET", "get_state.txt");
+                xhttp.send()
+                handler();  // Test only
+
+            }
+
+            function setStatus(){
+                var power_state = document.querySelector('input[name="power_switch"').checked;
+                var pulse_mode_state = document.querySelector('input[name="pulse_mode"]:checked').id;
+                var colour_mode_state = document.querySelector('input[name=colour_mode]:checked').id;
+                var colour_state = document.querySelector('input[name="colour_picker"]').value;
+
+                power_state = power_state_map.indexOf(power_state);
+                pulse_mode_state = pulse_mode_state_map.indexOf(pulse_mode_state);
+                colour_mode_state = colour_mode_state_map.indexOf(colour_mode_state);
+
+                var status = [power_state, pulse_mode_state, colour_mode_state, colour_state];
+                status = status.join(',');
+
+                var xhttp = new XMLHttpRequest();
+                xhttp.open("POST", "set_state.txt");
+                xhttp.setRequestHeader("Content-Type", "text/plain");
+                xhttp.send(status);
+            }
+
+            setInterval(fetchStatus, 5000);  // Get status at 5s interval
+        </script>
+
+    </head>
+    <body>
+        <div class="container-fluid p-3 bg-dark text-white">
+            <h1>LEDStrip Controller</h1>
+            <p>This is within a full-width container...</p>
+        </div>
+        <div class="row p-3">
+            <form action="index.html" id="power_form" method="post" autocomplete="off" novalidate>
+                <div class="col">
+                    <label class="form-check-label" for="power_switch">Activate:</label>
+                </div>
+                <div class="col form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="power_switch" name="power_switch" onchange="setStatus()" value="no">
+                </div>
+            </form>
+        </div>
+        <div class="row p-3">
+            <form action="index.html" id="pulse_mode_form" method="post" autocomplete="off" novalidate>
+                <div class="col-sm-1">
+                    <p>Pulse Mode:</p>
+                </div>
+                <div class="col-sm-6 btn-group">
+                    
+                    <input type="radio" class="btn-check" name="pulse_mode" id="continuous" onchange="setStatus()" checked>
+                    <label class="btn btn-outline-primary" for="continuous">Continuous</label>
+                
+                    <input type="radio" class="btn-check" name="pulse_mode" id="dots" onchange="setStatus()">
+                    <label class="btn btn-outline-primary" for="dots">Dot Train</label>
+                
+                    <input type="radio" class="btn-check" name="pulse_mode" id="dashes" onchange="setStatus()">
+                    <label class="btn btn-outline-primary" for="dashes">Dash Train</label>
+                    
+                </div>
+            </form>
+        </div>
+        <div class="row p-3">
+            <form action="index.html" id="colour_mode_form" method="post" autocomplete="off" novalidate>
+                <div class="col-sm-1">
+                    <p>Colour Mode:</p>
+                </div>
+                <div class="col-sm-6">
+                    <div class="btn-group">
+                        <input type="radio" class="btn-check" name="colour_mode" id="single" onchange="setStatus()" checked>
+                        <label class="btn btn-outline-primary" for="single">Single</label>
+
+                        <input type="radio" class="btn-check" name="colour_mode" id="tight" onchange="setStatus()">
+                        <label class="btn btn-outline-primary" for="tight">Tight</label>
+
+                        <input type="radio" class="btn-check" name="colour_mode" id="normal" onchange="setStatus()">
+                        <label class="btn btn-outline-primary" for="normal">Normal</label>
+
+                        <input type="radio" class="btn-check" name="colour_mode" id="spread" onchange="setStatus()">
+                        <label class="btn btn-outline-primary" for="spread">Spread</label>
+
+                        <input type="radio" class="btn-check" name="colour_mode" id="other" onchange="setStatus()">
+                        <label class="btn btn-outline-primary" for="other">Other...</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="row p-3">
+            <form action="index.html" id="colour_form" method="post" autocomplete="off" novalidate>
+                <div class="col-sm-1">
+                    <p>Colour:</p>
+                </div>
+                <div class="col-sm-6">
+                    <input type="color" class="form-control form-control-color" id="colour_picker" onchange="setStatus()" name="colour_picker" value="#FFFFFF" title="Choose a colour">
+                </div>
+            </form>
+        </div>
+    </body>
+</html>
+)=====";
